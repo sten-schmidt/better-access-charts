@@ -10,7 +10,7 @@ Attribute VB_Exposed = True
 '###########################################################################################
 '# Copyright (c) 2020, 2021 Thomas Möller                                                  #
 '# MIT License  => https://github.com/team-moeller/better-access-charts/blob/main/LICENSE  #
-'# Version 1.29.14  published: 24.07.2021                                                  #
+'# Version 1.30.09  published: 20.10.2021                                                  #
 '###########################################################################################
 
 Option Compare Database
@@ -52,7 +52,7 @@ End Enum
 
 '### Constants
 
-Private Const HtmlFileName As String = "BetterAccessChart.html"
+Private Const HtmlFileName As String = "BetterAccessChart_{}.html"
 
 
 '### Members
@@ -116,6 +116,11 @@ Private m_DataLabelNeeded As Boolean
 Private m_DataLabelFontNeeded As Boolean
 
 
+'### Windows API Declarations
+Private Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" _
+    (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long
+    
+    
 '### Properties
 
 Public Property Set Control(ByVal This_Control As WebbrowserControl)
@@ -542,15 +547,10 @@ End Sub
 '### Public Methods
 
 Public Sub DrawChart()
-
-    'Declarations
-    Dim FileName As String
     
     CreateChartFile
-       
-    FileName = CurrentProject.Path & "\" & HtmlFileName
     
-    Control.Object.Navigate FileName
+    Control.Object.Navigate getHTMLFileName
     
 End Sub
 
@@ -561,12 +561,12 @@ Private Sub CreateChartFile()
 
     'Declarations
     Dim f As Integer
-    Dim strPath As String
-    Dim strFilename As String
+''    Dim strPath As String
+''    Dim strFilename As String
     Dim strContent As String
     
-    strPath = CurrentProject.Path
-    strFilename = "\" & HtmlFileName
+''    strPath = CurrentProject.Path
+''    strFilename = "\" & HtmlFileName
     
     strContent = strContent & getHeader
     strContent = strContent & getChartType
@@ -575,7 +575,7 @@ Private Sub CreateChartFile()
     strContent = strContent & getFooter
  
     f = FreeFile()
-    Open strPath & strFilename For Output As f
+    Open getHTMLFileName For Output As f
     Print #f, strContent;
  
     Close f
@@ -833,9 +833,9 @@ On Error GoTo Handle_Error
                 ReDim strData(rst.RecordCount - 1)
                 Do While Not rst.EOF
                     strLabels(i) = rst(DataSourceLabelFieldName)
-                    strData(i) = "{x:" & Str$(rst(DataSourceDataFieldName(0))) & _
-                                 ", y:" & Str$(rst(DataSourceDataFieldName(1))) & _
-                                 ", r:" & Str$(rst(DataSourceDataFieldName(2))) & "}"
+                    strData(i) = "{x:" & Str$(Nz(rst(DataSourceDataFieldName(0)))) & _
+                                 ", y:" & Str$(Nz(rst(DataSourceDataFieldName(1)))) & _
+                                 ", r:" & Str$(Nz(rst(DataSourceDataFieldName(2)))) & "}"
                     i = i + 1
                     rst.MoveNext
                 Loop
@@ -854,8 +854,8 @@ On Error GoTo Handle_Error
                 ReDim strData(rst.RecordCount - 1)
                 Do While Not rst.EOF
                     strLabels(i) = rst(DataSourceLabelFieldName)
-                    strData(i) = "{x:" & Str$(rst(DataSourceDataFieldName(0))) & _
-                                 ", y:" & Str$(rst(DataSourceDataFieldName(1))) & "}"
+                    strData(i) = "{x:" & Str$(Nz(rst(DataSourceDataFieldName(0)))) & _
+                                 ", y:" & Str$(Nz(rst(DataSourceDataFieldName(1)))) & "}"
                     i = i + 1
                     rst.MoveNext
                 Loop
@@ -876,7 +876,7 @@ On Error GoTo Handle_Error
                     strLabels(0) = strLabels(0) & "'" & rst(DataSourceLabelFieldName) & "',"
                     i = 0
                     For Each Field In DataSourceDataFieldName
-                        strData(i) = strData(i) & Str$(rst(DataSourceDataFieldName(i))) & ","
+                        strData(i) = strData(i) & Str$(Nz(rst(DataSourceDataFieldName(i)))) & ","
                         i = i + 1
                     Next Field
                     rst.MoveNext
@@ -1182,6 +1182,9 @@ Private Function getDataLabelAnchorString(ByVal ThisAnchor As chDataLabelAnchor)
     
 End Function
 
+
+'### Private Helper Methods
+
 Private Function CutTrailingComma(ByVal strText As String) As String
 
     If Right$(strText, 1) = "," Then
@@ -1194,3 +1197,46 @@ Private Function CutTrailingComma(ByVal strText As String) As String
 
 End Function
 
+
+Private Function getTempFolder() As String
+    
+    'Declarations
+    Dim strTempPath As String
+    Dim lngTempPath As Long
+    
+    strTempPath = String(144, vbNullChar)
+    lngTempPath = Len(strTempPath)
+    If (GetTempPath(lngTempPath, strTempPath) > 0) Then
+        getTempFolder = TrimNull(strTempPath)
+    Else
+        getTempFolder = vbNullString
+    End If
+    
+End Function
+
+Private Function TrimNull(ByVal strString As String) As String
+    
+    'Declarations
+    Dim intPos As Integer
+
+    intPos = VBA.InStr(strString, vbNullChar)
+    If intPos > 0 Then
+        TrimNull = VBA.Left$(strString, intPos - 1)
+    Else
+        TrimNull = strString
+    End If
+  
+End Function
+
+Private Function getHTMLFileName() As String
+    
+    'Declarations
+    Dim strPath As String
+    Dim strFilename As String
+    
+    strPath = getTempFolder
+    strFilename = Replace(HtmlFileName, "{}", m_Control.Name)
+
+    getHTMLFileName = strPath & strFilename
+    
+End Function

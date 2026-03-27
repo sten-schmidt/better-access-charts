@@ -3,12 +3,14 @@ Better charts for Access with charts.js
 
 ## Why Better charts for Access?
 
-Microsoft Access urgently needs modern charts. The original charts in MS Access are from the 90s of the previous century. Microsoft has given the charts in Access a lift. They call it "Modern Charts".
+Microsoft Access badly needs modern charts. The original charts in MS Access date from the 90s of the previous century. Microsoft has given the charts in Access a lift. They called it "Modern Charts".
 
-There are many solutions for charts based on Java Script available on the web. This project makes use of this.
-We create charts using the Chart.js library and display them in the web browser control. The whole logic is hidden in a class module.
+There are countless JavaScript libraries on the world wide web that you can use to create cool charts. This project makes use of this.
+We create charts using the [Chart.js](https://www.chartjs.org/docs/latest/) library and display them in the edge browser control. The whole logic is hidden in some class modules.
 
 Take a look at the demo and let yourself be inspired by the possibilities.
+
+![grab-landing-page](https://github.com/team-moeller/better-access-charts/blob/main/Demo.gif)
 
 ## You want to give it a try?
 1. Download the [latest release](https://github.com/team-moeller/better-access-charts/releases/latest)
@@ -17,49 +19,44 @@ Take a look at the demo and let yourself be inspired by the possibilities.
 4. Push the button: "Create Chart"
 
 ## How to integrate into your own database?
-**1. Import of the class module**
+**1. Import of the class modules**
 
-First, the class module cls_Better_Access_Chart must be imported from the demo database into your Access database.
+First, all modules with the name "BAC_*" must be imported from the demo database into your Access database.
 
-**2. Insert web browser control on form**
+**2. Insert edge browser control on form**
 
-The second step is to add a web browser control to display the chart on a form. It is best to give the control a meaningful name. This is required later in the VBA code. I like to use the name "ctlWebbrowser" for this.
-
-The following text is entered in the "ControlSource" property: = "about: blank". This ensures that the web browser control remains empty at the beginning.
+The second step is to add an edge browser control to display the chart on a form. It is best to give the control a meaningful name. This is required later in the VBA code. I like to use the name "ctlEdgeBrowser" for this.
 
 **3. First lines of code for the basic functionality**
 
 The best thing to do is to add another button. In the click event, paste the following code:
 
 ```vba
-Dim myChart As cls_Better_Access_Chart  
-Set myChart = New cls_Better_Access_Chart  
-Set myChart.Control = Me.ctlWebbrowser  
-myChart.DrawChart  
+Dim myChart As BAC_Chart  
+Set myChart = BAC.Chart(Me.ctlEdgeBrowser)  
+myChart.CreateChart  
 ```
 
-* In line 1 a variable of the type cls_Better_Access_Chart is declared.
-* In line 2 a new instance of this class is created.
-* In line 3, the web browser control is assigned to the class module.
-* The chart is created in line 4. 
-
+* In line 1 a variable of the type BAC_Chart is declared.
+* In line 2 a new instance of this class is created and the edge browser control is assigned to the class module.
+* The chart is created in line 3. 
 
 When you run this code, you will see a chart with some data. At the moment no data source is assigned. In such a case, Better-Access Charts simply shows a standard data source with 6 entries. This is particularly practical for our example. We have now done a quick test and fundamentally implemented the chart.
 
 **4. Add a data source and define the chart type**
 
-In order for the chart to show something, it needs a data source. You can use the [DataSourceObjectName](https://github.com/team-moeller/better-access-charts/wiki/datasourceobjectname) property for this, for example. Enter the name of a table or a query that contains the data to be displayed.
+In order for the chart to show something, it needs a [data source](https://github.com/team-moeller/better-access-charts/wiki/datasource). You can use the [DataSource.ObjectName](https://github.com/team-moeller/better-access-charts/wiki/datasource#objectname) property for this, for example. Enter the name of a table or a query that contains the data to be displayed.
 
-You can specify one or more field names using the [DataSourceDataFieldName](https://github.com/team-moeller/better-access-charts/wiki/datasourcedatafieldname) property. If you specify multiple field names, a data series is drawn for each field. You use the [DataSourceLabelFieldName](https://github.com/team-moeller/better-access-charts/wiki/datasourcelabelfieldname) attribute to specify the field from which the names of the data points are taken.
+You can specify one or more field names using the [DataSource.DataFieldNames](https://github.com/team-moeller/better-access-charts/wiki/datasource#datafieldnames) property. If you specify multiple field names, a data series is drawn for each field. You use the [DataSource.LabelFieldName](https://github.com/team-moeller/better-access-charts/wiki/datasource#labelfieldname) attribute to specify the field from which the names of the data points are taken.
 
-Finally, use the [ChartType](https://github.com/team-moeller/better-access-charts/wiki/charttype) property to select which of the nine possible chart types should be created.
+Finally, use the [ChartType](https://github.com/team-moeller/better-access-charts/wiki/chart#charttype) property to select which of the nine possible chart types should be created.
 
 The necessary VBA code could look like this, for example:
 
 ```vba
-myChart.DataSourceObjectName = "tbl_DemoData"
-myChart.DataSourceDataFieldName = Array("Dataset1", "Dataset2", "Dataset3")
-myChart.DataSourceLabelFieldName = "DataLabel"
+myChart.DataSource.ObjectName = "tbl_DemoData"
+myChart.DataSource.DataFieldNames = Array("Dataset1", "Dataset2", "Dataset3")
+myChart.DataSource.LabelFieldName = "DataLabel"
 myChart.ChartType = chChartType.Line
 ```
 
@@ -70,8 +67,8 @@ myChart.ChartType = chChartType.Line
 
 **5. Set further attributes for the chart**
 
-The next step is to adapt the chart to your own needs. For example, you can define a [title](https://github.com/team-moeller/better-access-charts/wiki/showtitle), label the [axes](https://github.com/team-moeller/better-access-charts/wiki/xaxislabeltext) or adjust the [default font size](https://github.com/team-moeller/better-access-charts/wiki/defaultfontsize).
+The next step is to adapt the chart to your own needs. For example, you can define a [title](https://github.com/team-moeller/better-access-charts/wiki/title), label the [axes](https://github.com/team-moeller/better-access-charts/wiki/axis#labeltext) or adjust the [default font size](https://github.com/team-moeller/better-access-charts/wiki/font#size).
 
-The project currently has 36 properties. You can see all of these in the [documentation](https://github.com/team-moeller/better-access-charts/wiki/documentation) on the Wiki. I have also presented the individual progress in the [blog](https://translate.google.com/translate?hl=en&sl=de&tl=en&u=https%3A%2F%2Fblog.team-moeller.de%2Fsearch%2Flabel%2FBetter%20Access%20Charts).
+The project currently has 21 subclasses with lots of properties. You can see all of them in the [documentation](https://github.com/team-moeller/better-access-charts/wiki/documentation) on the Wiki. I have also presented the individual progress in the [blog](https://blog.team-moeller.de/search/label/Better%20Access%20Charts).
 
 As you can see, there are a multitude of sources. Take a look around and make use of the options provided.

@@ -1,8 +1,8 @@
 Attribute VB_Name = "mdl_Helpers"
 '###########################################################################################
-'# Copyright (c) 2020, 2021 Thomas Möller                                                  #
+'# Copyright (c) 2020 - 2024 Thomas Moeller, supported by K.D.Gundermann                   #
 '# MIT License  => https://github.com/team-moeller/better-access-charts/blob/main/LICENSE  #
-'# Version 1.32.05  published: 31.10.2021                                                  #
+'# Version 4.29.01  published: 29.09.2024                                                  #
 '###########################################################################################
 
 Option Compare Database
@@ -14,115 +14,33 @@ Option Explicit
     Private Declare Function MakeSureDirectoryPathExists Lib "imagehlp.dll" (ByVal lpPath As String) As Long
 #End If
 
-Public Function SaveChartjsToDisk() As Boolean
-    
-    If SaveFileToDisk("Chart.min.js", CurrentProject.Path) = True Then
-        SaveChartjsToDisk = True
-    Else
-        SaveChartjsToDisk = False
-    End If
-
-End Function
-
-Public Function SaveChartjsPluginColorSchemesToDisk() As Boolean
-    
-    If SaveFileToDisk("chartjs-plugin-colorschemes.min.js", CurrentProject.Path) = False Then
-        SaveChartjsPluginColorSchemesToDisk = False
-    ElseIf SaveFileToDisk("colorschemes.brewer.js", CurrentProject.Path) = False Then
-        SaveChartjsPluginColorSchemesToDisk = False
-    ElseIf SaveFileToDisk("colorschemes.office.js", CurrentProject.Path) = False Then
-        SaveChartjsPluginColorSchemesToDisk = False
-    ElseIf SaveFileToDisk("colorschemes.tableau.js", CurrentProject.Path) = False Then
-        SaveChartjsPluginColorSchemesToDisk = False
-    Else
-        SaveChartjsPluginColorSchemesToDisk = True
-    End If
-
-End Function
-
-Public Function SaveChartjsPluginDataLabelsToDisk() As Boolean
-    
-    If SaveFileToDisk("chartjs-plugin-datalabels.min.js", CurrentProject.Path) = True Then
-        SaveChartjsPluginDataLabelsToDisk = True
-    Else
-        SaveChartjsPluginDataLabelsToDisk = False
-    End If
-
-End Function
-
-Private Function SaveFileToDisk(ByVal FileName As String, ByVal Path As String) As Boolean
-On Error GoTo Handle_Error
-
-    'Declarations
-    Dim cnn As ADODB.Connection
-    Dim rst As ADODB.Recordset
-    Dim FileID As Long
-    Dim Buffer() As Byte
-    Dim FileLen As Long
-    Dim Success As Boolean
-
-    Set cnn = CurrentProject.Connection
-    Set rst = New ADODB.Recordset
-    rst.Open "Select FileData FROM USys_FileData Where FileName='" & FileName & "'", _
-        cnn, adOpenDynamic, adLockOptimistic
-
-    FileID = FreeFile
-    FileLen = Nz(LenB(rst!FileData), 0)
-
-    If FileLen > 0 Then
-        ReDim Buffer(FileLen)
-        MakeSureDirectoryPathExists (Path & "\")
-        Open Path & "\" & FileName For Binary Access Write As FileID
-        Buffer = rst!FileData.GetChunk(FileLen)
-        Put FileID, , Buffer
-        Close FileID
-    End If
-    Success = True
-
-Exit_Here:
-    On Error Resume Next
-    rst.Close
-    Set rst = Nothing
-    Set cnn = Nothing
-    SaveFileToDisk = Success
-    Exit Function
-
-Handle_Error:
-    Select Case Err.Number
-        Case 0
-            Resume
-        Case Else
-            MsgBox Err.Description, vbExclamation, Err.Number
-            Resume Exit_Here
-    End Select
-
-End Function
-
 Public Function File2OLE(ByVal Table As String, ByVal PrimaryKeyFieldName As String, _
                          ByVal TargetFieldName As String, ByVal PrimaryKeyValue As Long, _
                          ByVal FileName As String, Optional ByVal InCurrentProjectPath As Boolean) As Long
 
 'Prerequisit: Record with ID must already exist
-'Call: File2OLE("USys_FileData","ID","FileData","1","Chart.min.js",True)
+'Call: File2OLE("USys_FileData","ID","FileData","1","chart.umd.min.js",True)
 
     On Error GoTo Handle_Error
 
-    Dim cnn As ADODB.Connection
+    Dim cnn As Object
+    Dim rst As Object
     Dim strSQL As String
-    Dim rst As ADODB.Recordset
     Dim FileID As Long
-    Dim PathFileName As String
+    Dim PathFilename As String
     Dim Buffer() As Byte
     Dim FileSize As Long
+    Const adOpenDynamic As Long = 2
+    Const adLockOptimistic = 3
 
     If InCurrentProjectPath = True Then
-        PathFileName = CurrentProject.Path & "\" & FileName
+        PathFilename = CurrentProject.Path & "\" & FileName
     Else
-        PathFileName = FileName
+        PathFilename = FileName
     End If
 
-    If Dir$(PathFileName) = vbNullString Then
-        MsgBox "Thge file '" & PathFileName & "' does not exist."
+    If Dir$(PathFilename) = vbNullString Then
+        MsgBox "Thge file '" & PathFilename & "' does not exist."
         Exit Function
     End If
 
@@ -131,13 +49,13 @@ Public Function File2OLE(ByVal Table As String, ByVal PrimaryKeyFieldName As Str
              "WHERE " & PrimaryKeyFieldName & " = " & PrimaryKeyValue
     
     Set cnn = CurrentProject.Connection
-    Set rst = New ADODB.Recordset
+    Set rst = CreateObject("ADODB.RecordSet")
     rst.Open strSQL, cnn, adOpenDynamic, adLockOptimistic
     FileID = FreeFile
 
-    Open PathFileName For Binary Access Read Lock Read Write As FileID
+    Open PathFilename For Binary Access Read Lock Read Write As FileID
 
-    FileSize = FileLen(PathFileName)
+    FileSize = FileLen(PathFilename) - 1      '-1 to exclude NUL at the end
     ReDim Buffer(FileSize)
     rst(TargetFieldName) = Null
     Get FileID, , Buffer
@@ -170,7 +88,15 @@ Public Function IsFormOpen(ByVal strFormName As String) As Boolean
     
 End Function
 
-Public Sub PrepareAndExportModules()
+Public Sub ExportModules()
+' This method is intended for the contributor who just wants to export the modules
+
+    Call PrepareAndExportModules(False)
+
+End Sub
+
+Public Sub PrepareAndExportModules(Optional ByVal TagVersion As Boolean = True)
+' This method is intended for the power user who wants to update the version numbers in the code headers
 
     'Declarations
     Dim Version As String
@@ -178,13 +104,15 @@ Public Sub PrepareAndExportModules()
     Dim vbc As Object
     
     MakeSureDirectoryPathExists CurrentProject.Path & "\Modules\"
-    Version = DLast("V_Number", "tbl_VersionHistory")
+    Version = DMax("V_Number", "tbl_VersionHistory")
     CodeLine = "'# Version " & Version & "  published: " & Format$(Date, "dd.mm.yyyy") & "                                                  #"
     
     For Each vbc In Application.VBE.ActiveVBProject.VBComponents
         If vbc.Type = 1 Or vbc.Type = 2 Then
-            Application.VBE.ActiveVBProject.VBComponents(vbc.Name).CodeModule.InsertLines 4, CodeLine
-            Application.VBE.ActiveVBProject.VBComponents(vbc.Name).CodeModule.DeleteLines 5, 1
+            If TagVersion Then
+                Application.VBE.ActiveVBProject.VBComponents(vbc.Name).CodeModule.InsertLines 4, CodeLine
+                Application.VBE.ActiveVBProject.VBComponents(vbc.Name).CodeModule.DeleteLines 5, 1
+            End If
     
             Application.VBE.ActiveVBProject.VBComponents(vbc.Name).Export CurrentProject.Path & "\Modules\" & vbc.Name & IIf(vbc.Type = 2, ".cls", ".bas")
         End If
@@ -199,16 +127,24 @@ Public Sub ImportModules()
 
     'Declarations
     Dim strFile As String
-    Dim vbc As Object
+    Dim strModule As String
+    Dim vbc As Object ' VBComponents
+    Dim vbModule As Object
+    Const ThisModuleName As String = "mdl_Helpers"
     
-    strFile = Dir(CurrentProject.Path & "\Modules\")
+    Set vbc = Application.VBE.ActiveVBProject.VBComponents
+    strFile = Dir$(CurrentProject.Path & "\Modules\")
     Do While Len(strFile) > 0
         On Error Resume Next
-        Set vbc = Application.VBE.ActiveVBProject.VBComponents(strFile)
-        Application.VBE.ActiveVBProject.VBComponents.Remove vbc
-        On Error GoTo 0
-        Application.VBE.ActiveVBProject.VBComponents.Import CurrentProject.Path & "\Modules\" & strFile
-        Debug.Print strFile
+        strModule = Left$(strFile, InStr(strFile, ".") - 1)
+        If strModule <> ThisModuleName Then
+            Set vbModule = vbc.Item(strModule)
+            If Not vbModule Is Nothing Then
+                Application.VBE.ActiveVBProject.VBComponents.Remove vbModule
+            End If
+            On Error GoTo 0
+            Application.VBE.ActiveVBProject.VBComponents.Import CurrentProject.Path & "\Modules\" & strFile
+        End If
         strFile = Dir
     Loop
     Application.DoCmd.RunCommand (acCmdCompileAndSaveAllModules)
@@ -216,3 +152,4 @@ Public Sub ImportModules()
     MsgBox "Import done", vbInformation, "Better Access Charts"
 
 End Sub
+
